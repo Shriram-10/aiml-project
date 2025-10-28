@@ -15,12 +15,15 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.metrics import confusion_matrix, classification_report
 from pandas.plotting import scatter_matrix
+from sklearn.metrics import ConfusionMatrixDisplay
+import os
+import pickle
 
 # ============================================================================
 # DATA LOADING
 # ============================================================================
 
-folder = '../data/Datasets/'
+folder = './data/Datasets/'
 
 # Read all season data
 raw_data_1 = pd.read_csv(folder + '2000-01.csv')
@@ -569,3 +572,81 @@ print(classification_report(y_test, svm_pred))
 print("\n" + "="*80)
 print("ANALYSIS COMPLETE")
 print("="*80)
+
+# =========================
+# SAVE MODELS & ARTIFACTS
+# =========================
+
+os.makedirs("models", exist_ok=True)
+os.makedirs("figures", exist_ok=True)
+
+# Save trained models and feature columns for later use
+with open(os.path.join("models", "logistic_model.pkl"), "wb") as f:
+    pickle.dump(lr_classifier, f)
+
+with open(os.path.join("models", "svm_model.pkl"), "wb") as f:
+    pickle.dump(svm_classifier, f)
+
+# Save the feature column ordering used for training (needed for later predictions)
+feature_columns = list(X_train.columns)
+with open(os.path.join("models", "feature_columns.pkl"), "wb") as f:
+    pickle.dump(feature_columns, f)
+
+# Save test split (optional) to reproduce evaluation later
+with open(os.path.join("models", "X_test.pkl"), "wb") as f:
+    pickle.dump(X_test, f)
+with open(os.path.join("models", "y_test.pkl"), "wb") as f:
+    pickle.dump(y_test, f)
+
+print("Saved models and artifacts to ./models/")
+
+# =========================
+# VISUALIZATIONS
+# =========================
+
+# 1) Confusion matrix heatmaps for Logistic Regression and SVM
+fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+disp1 = ConfusionMatrixDisplay(confusion_matrix=lr_cm, display_labels=lr_classifier.classes_)
+disp1.plot(ax=ax[0], cmap="Blues", colorbar=False)
+ax[0].set_title("Logistic Regression CM")
+
+disp2 = ConfusionMatrixDisplay(confusion_matrix=svm_cm, display_labels=svm_classifier.classes_)
+disp2.plot(ax=ax[1], cmap="Blues", colorbar=False)
+ax[1].set_title("SVM CM")
+
+plt.tight_layout()
+plt.savefig(os.path.join("figures", "confusion_matrices.png"))
+plt.show()
+
+# 2) Logistic Regression coefficients (top positive & negative)
+coefs = lr_classifier.coef_.flatten()
+coef_df = pd.DataFrame({"feature": X_train.columns, "coef": coefs})
+coef_df = coef_df.sort_values(by="coef")
+
+# Plot top 15 negative and positive coefficients
+n_show = 15
+coef_plot = pd.concat([coef_df.head(n_show), coef_df.tail(n_show)])
+plt.figure(figsize=(8, 10))
+sns.barplot(x="coef", y="feature", data=coef_plot, palette="vlag")
+plt.title("Logistic Regression Coefficients (top negative & positive)")
+plt.tight_layout()
+plt.savefig(os.path.join("figures", "lr_coefficients.png"))
+plt.show()
+
+# 3) Home win rate by matchweek (uses dataset read earlier from final_dataset.csv)
+if 'MW' in dataset.columns:
+    win_rate_by_mw = dataset.groupby("MW").apply(lambda df: (df.FTR == 'H').mean())
+    plt.figure(figsize=(10, 4))
+    sns.lineplot(x=win_rate_by_mw.index, y=win_rate_by_mw.values, marker="o")
+    plt.xlabel("Matchweek")
+    plt.ylabel("Home Win Rate")
+    plt.title("Home Team Win Rate by Matchweek")
+    plt.ylim(0, 1)
+    plt.grid(True, linestyle="--", alpha=0.4)
+    plt.tight_layout()
+    plt.savefig(os.path.join("figures", "home_win_rate_by_mw.png"))
+    plt.show()
+else:
+    print("Column 'MW' not found in dataset; skipping matchweek plot.")
+
+print("Saved figures to ./figures/")
