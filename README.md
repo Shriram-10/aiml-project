@@ -1,11 +1,7 @@
 # Football Match Outcome Prediction
 
-Get the code
-------------
-When you're ready to share the repository link, replace <REPO_URL> below with your GitHub URL. That single change makes the README ready to hand to anyone who will clone and run the project.
-
 ```cmd
-git clone <REPO_URL>
+git clone https://github.com/Shriram-10/aiml-project
 cd aiml-project
 ```
 
