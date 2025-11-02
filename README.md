@@ -1,84 +1,53 @@
-# Project Title
-Intro to AI/ML — Project
+# Football Match Outcome Prediction
 
-## Overview
-Brief project implementing a supervised learning pipeline (notebooks contain data exploration, preprocessing, model training, evaluation and interpretation). This README summarizes the process, how to reproduce results, where to get final performance statistics, challenges encountered, and learning outcomes.
+Get the code
+------------
+When you're ready to share the repository link, replace <REPO_URL> below with your GitHub URL. That single change makes the README ready to hand to anyone who will clone and run the project.
 
-## Notebooks
-List of notebooks (update with your actual file names):
-- `01_exploration.ipynb` — data exploration and EDA
-- `02_preprocessing.ipynb` — cleaning, feature engineering, splits
-- `03_modeling.ipynb` — model training and hyperparameter tuning
-- `04_evaluation.ipynb` — metrics, visualizations, and interpretation
+```cmd
+git clone <REPO_URL>
+cd aiml-project
+```
 
-If filenames differ, replace the list above.
+What you'll find here
+- `main.py`: the full pipeline (read data, make features, train models, evaluate, save models and images).
+- `predict.py`: a small helper to load the saved model and produce predictions from a prepared CSV.
+- `data/`: where input CSVs go (`data/Datasets/` for per-season files or a single `final_dataset.csv`).
+- `models/` and `figures/`: populated by running the pipeline.
+- `REPORT_FINAL.md` / `REPORT_FINAL.html`: a readable project report with results and interpretation.
 
-## Reproducible execution
-To generate final metrics and figures, execute the notebooks end-to-end. Recommended options:
-- Run interactively in Jupyter Lab/Notebook.
-- Execute programmatically:
-    - Using papermill:
-        - pip install papermill
-        - papermill 01_exploration.ipynb 01_exploration_output.ipynb
-        - papermill 02_preprocessing.ipynb 02_preprocessing_output.ipynb
-        - papermill 03_modeling.ipynb 03_modeling_output.ipynb
-        - papermill 04_evaluation.ipynb 04_evaluation_output.ipynb
-    - Or run them with nbconvert:
-        - jupyter nbconvert --to notebook --execute 03_modeling.ipynb --output 03_modeling_exec.ipynb
+Dataset 
+This project uses historical English league season results CSVs. A commonly used public source is the "EPL Match Results" dataset on Kaggle (example):
 
-After execution, copy final reported metrics (accuracy, precision, recall, F1, AUC, loss curves, confusion matrix) into the Results section below.
+- Kaggle (season-by-season results): https://www.kaggle.com/datasets/saife245/english-premier-league
 
-## Modeling process (summary)
-1. Data loading and initial inspection.
-2. Cleaning: handle missing values, outliers, categorical encoding.
-3. Feature engineering: scaling, polynomial/interaction features, feature selection.
-4. Train/validation/test split (state proportion used).
-5. Model selection: baseline model → tuned models (list models tried, e.g., logistic regression, random forest, XGBoost).
-6. Hyperparameter tuning: grid search / random search / Bayesian optimization (tool used).
-7. Final training on training + validation (if applicable) and evaluation on held-out test set.
-8. Result interpretation and visualizations (feature importances, SHAP/LIME if used).
+Quick notes before running
+- The code expects columns like `Date`, `HomeTeam`, `AwayTeam`, `FTHG`, `FTAG`, `FTR`. If your files are named differently, rename them or tweak `main.py`.
+- `MW` (matchweek) is optional but helps create a few extra plots.
+- The pipeline saves `feature_columns.pkl` and `scaler.pkl`; keep those if you want reproducible predictions.
 
-## Results
-I could not read or execute the notebooks from this environment, so I did not extract metrics automatically. Please run the notebooks as described above then paste or replace the placeholders below with the actual numbers:
+Exact run steps (preserved)
+1. Create and activate a virtual environment (Windows cmd):
 
-Key performance (replace placeholders):
-- Test accuracy: {{TEST_ACCURACY}}
-- Precision: {{PRECISION}}
-- Recall: {{RECALL}}
-- F1 score: {{F1_SCORE}}
-- ROC AUC: {{ROC_AUC}}
-- Test set size: {{N_TEST}}
+```cmd
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-Comparison between models (example table — replace with real values):
+2. Prepare the data: either place per-season files in `./data/Datasets/` or put a consolidated `final_dataset.csv` in `./data/`.
 
-| Model | Accuracy | Precision | Recall | F1 | Notes |
-|---|---:|---:|---:|---:|---|
-| Baseline | {{B_ACC}} | {{B_PRE}} | {{B_REC}} | {{B_F1}} | Simple baseline |
-| Random Forest | {{RF_ACC}} | {{RF_PRE}} | {{RF_REC}} | {{RF_F1}} | Tuned depth/n_estimators |
-| XGBoost | {{XGB_ACC}} | {{XGB_PRE}} | {{XGB_REC}} | {{XGB_F1}} | Best validation performance |
+3. Run the pipeline:
 
-Include confusion matrices and any calibration plots from `04_evaluation.ipynb`.
+```cmd
+python main.py
+```
 
-## How to update this README with real results
-1. Execute notebooks (see Reproducible execution).
-2. Open `04_evaluation_output.ipynb` (or equivalent) and copy final metrics.
-3. Replace placeholders in the Results section.
-4. Commit the updated README.
+Troubleshooting (quick)
+- If imports fail, re-run `pip install -r requirements.txt`. Add `shap` / `umap-learn` only if you're generating those plots.
+- If long GridSearch jobs hang on Windows, stop the run and re-run; the code uses single-threaded CV by default to avoid this.
+- `SettingWithCopyWarning` from pandas is noisy but non-fatal; it indicates some in-place assignment that can be cleaned up later.
 
-## Challenges encountered
-- Data quality issues: missing values and inconsistent formats required careful cleaning.
-- Class imbalance (if present): required resampling or class-weighted loss.
-- Feature engineering: identifying useful transformations without overfitting.
-- Tuning compute vs. performance: longer tuning improved metrics but increased runtime.
-- Reproducibility: ensuring fixed random seeds and environment consistency.
 
-## Learning outcomes
-- Improved workflow for end-to-end model development: EDA → preprocessing → modeling → evaluation.
-- Practical experience with model selection and hyperparameter tuning.
-- Better understanding of evaluation metrics and when to prefer one over another (precision vs recall trade-offs).
-- Importance of reproducible execution (notebook execution scripting, environment management).
 
-## Notes & next steps
-- Add model serialization (pickle/ONNX) and a small inference script if deployment is needed.
-- Add unit tests for preprocessing steps.
-- Record environment (requirements.txt or environment.yml) for reproducibility.
+

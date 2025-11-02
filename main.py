@@ -1,7 +1,4 @@
-"""
-Complete Football Match Prediction System
-All code from notebook in a single file
-"""
+
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -9,11 +6,11 @@ import numpy as np
 import seaborn as sns
 from datetime import datetime as dt
 import itertools
-from sklearn.preprocessing import scale
-from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import scale, StandardScaler
+from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import confusion_matrix, classification_report, make_scorer, recall_score
 from pandas.plotting import scatter_matrix
 from sklearn.metrics import ConfusionMatrixDisplay
 import os
@@ -533,6 +530,17 @@ X_train, X_test, y_train, y_test = train_test_split(
     X_all, y_all, test_size=0.3, random_state=2, stratify=y_all
 )
 
+# Fit StandardScaler on training data and transform both train and test sets
+scaler = StandardScaler()
+scaler.fit(X_train)
+X_train_scaled = pd.DataFrame(scaler.transform(X_train), columns=X_train.columns, index=X_train.index)
+X_test_scaled = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns, index=X_test.index)
+
+# Ensure models directory exists before saving scaler later
+os.makedirs("models", exist_ok=True)
+with open(os.path.join("models", "scaler.pkl"), "wb") as f:
+    pickle.dump(scaler, f)
+
 # ============================================================================
 # MODEL 1: LOGISTIC REGRESSION
 # ============================================================================
@@ -542,8 +550,9 @@ print("LOGISTIC REGRESSION MODEL")
 print("="*80)
 
 lr_classifier = LogisticRegression(random_state=0, max_iter=1000)
-lr_classifier.fit(X_train, y_train)
-lr_pred = lr_classifier.predict(X_test)
+# Train logistic regression on scaled data
+lr_classifier.fit(X_train_scaled, y_train)
+lr_pred = lr_classifier.predict(X_test_scaled)
 
 lr_cm = confusion_matrix(y_test, lr_pred)
 print("\nConfusion Matrix:")
@@ -559,9 +568,48 @@ print("\n" + "="*80)
 print("SVM MODEL")
 print("="*80)
 
-svm_classifier = SVC(kernel='rbf', random_state=0)
-svm_classifier.fit(X_train, y_train)
-svm_pred = svm_classifier.predict(X_test)
+# --- SVM: use GridSearchCV to tune hyperparameters and optimize recall for 'H' ---
+print("\nStarting manual SVM hyperparameter search (cross_val_score)...")
+# Manual CV search (single-threaded) to avoid joblib/loky parallel import problems on some systems
+svm_base = SVC(random_state=0)
+param_grid = [
+    {'C': 0.1, 'kernel': 'rbf', 'gamma': 'scale'},
+    {'C': 1,   'kernel': 'rbf', 'gamma': 'scale'},
+    {'C': 10,  'kernel': 'rbf', 'gamma': 'scale'},
+    {'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'},
+    {'C': 1,   'kernel': 'linear', 'gamma': 'scale'},
+    {'C': 10,  'kernel': 'linear', 'gamma': 'scale'},
+]
+
+# Create scorer for recall on class 'H'
+recall_h = make_scorer(recall_score, pos_label='H')
+
+best_score = -1.0
+best_params = None
+for p in param_grid:
+    clf = SVC(C=p['C'], kernel=p['kernel'], gamma=p['gamma'], class_weight='balanced', random_state=0)
+    scores = cross_val_score(clf, X_train_scaled, y_train, cv=3, scoring=recall_h, n_jobs=1)
+    mean_score = scores.mean()
+    print(f"Params: {p}, recall_H (cv mean) = {mean_score:.4f}")
+    if mean_score > best_score:
+        best_score = mean_score
+        best_params = p
+
+if best_params is not None:
+    print("Best params found:", best_params, "with recall_H:", best_score)
+    svm_classifier = SVC(C=best_params['C'], kernel=best_params['kernel'], gamma=best_params['gamma'], class_weight='balanced', random_state=0)
+    svm_classifier.fit(X_train_scaled, y_train)
+else:
+    print("No best params found; training fallback SVC")
+    svm_classifier = SVC(kernel='rbf', class_weight='balanced', gamma='scale', C=1.0, random_state=0)
+    svm_classifier.fit(X_train_scaled, y_train)
+
+svm_pred = svm_classifier.predict(X_test_scaled)
+
+# Diagnostic prints to check class distributions
+print("\nTrain class distribution:\n", y_train.value_counts())
+print("Test class distribution:\n", y_test.value_counts())
+print("SVM predicted distribution:\n", pd.Series(svm_pred).value_counts())
 
 svm_cm = confusion_matrix(y_test, svm_pred)
 print("\nConfusion Matrix:")

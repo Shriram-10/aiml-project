@@ -2,3 +2,10 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 venv/
+# Report files (removed or user-managed)
+REPORT_CLEAN.html
+REPORT_CLEAN.md
+REPORT_FINAL.html
+REPORT_FINAL.md
+REPORT.html
+REPORT.md
